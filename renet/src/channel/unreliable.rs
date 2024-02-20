@@ -118,7 +118,7 @@ impl SendChannelUnreliable {
 
     pub fn send_message(&mut self, message: Bytes) {
         if self.memory_usage_bytes + message.len() > self.max_memory_usage_bytes {
-            log::warn!(
+            tracing::warn!(
                 "dropped unreliable message sent because channel {} is memory limited",
                 self.channel_id
             );
@@ -127,7 +127,7 @@ impl SendChannelUnreliable {
 
         let num_fragments = message.len() / SLICE_SIZE;
         if num_fragments > 20 {
-            log::warn!(
+            tracing::warn!(
                 "Sending an unreliable message with {num_fragments} fragments, messages with this many fragments are susceptible to packet loss. \
                 Consider breaking your message into smaller ones or using a reliable channel");
         }
@@ -151,7 +151,7 @@ impl ReceiveChannelUnreliable {
 
     pub fn process_message(&mut self, message: Bytes) {
         if self.memory_usage_bytes + message.len() > self.max_memory_usage_bytes {
-            log::warn!(
+            tracing::warn!(
                 "dropped unreliable message received because channel {} is memory limited",
                 self.channel_id
             );
@@ -166,7 +166,7 @@ impl ReceiveChannelUnreliable {
         if !self.slices.contains_key(&slice.message_id) {
             let message_len = slice.num_slices * SLICE_SIZE;
             if self.memory_usage_bytes + message_len > self.max_memory_usage_bytes {
-                log::warn!(
+                tracing::warn!(
                     "dropped unreliable slice message received because channel {} is memory limited",
                     self.channel_id
                 );

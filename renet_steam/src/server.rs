@@ -130,7 +130,7 @@ impl<T: Manager + 'static> SteamServerTransport<T> {
 
                     if permitted {
                         if let Err(e) = event.accept() {
-                            log::error!("Failed to accept connection from {steam_id:?}: {e}");
+                            tracing::error!("Failed to accept connection from {steam_id:?}: {e}");
                         }
                     } else {
                         event.reject(NetConnectionEnd::AppGeneric, Some("Not allowed"));
@@ -144,7 +144,7 @@ impl<T: Manager + 'static> SteamServerTransport<T> {
             let messages = connection.receive_messages(MAX_MESSAGE_BATCH_SIZE);
             messages.iter().for_each(|message| {
                 if let Err(e) = server.process_packet_from(message.data(), *client_id) {
-                    log::error!("Error while processing payload for {}: {}", client_id, e);
+                    tracing::error!("Error while processing payload for {}: {}", client_id, e);
                 };
             });
         }
@@ -154,20 +154,20 @@ impl<T: Manager + 'static> SteamServerTransport<T> {
     pub fn send_packets(&mut self, server: &mut RenetServer) {
         'clients: for client_id in server.clients_id() {
             let Some(connection) = self.connections.get(&client_id) else {
-                log::error!("Error while sending packet: connection not found");
+                tracing::error!("Error while sending packet: connection not found");
                 continue;
             };
             let packets = server.get_packets_to_send(client_id).unwrap();
             // TODO: while this works fine we should probaly use the send_messages function from the listen_socket
             for packet in packets {
                 if let Err(e) = connection.send_message(&packet, SendFlags::UNRELIABLE) {
-                    log::error!("Failed to send packet to client {client_id}: {e}");
+                    tracing::error!("Failed to send packet to client {client_id}: {e}");
                     continue 'clients;
                 }
             }
 
             if let Err(e) = connection.flush_messages() {
-                log::error!("Failed flush messages for {client_id}: {e}");
+                tracing::error!("Failed flush messages for {client_id}: {e}");
             }
         }
     }

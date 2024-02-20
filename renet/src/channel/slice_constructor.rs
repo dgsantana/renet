@@ -26,7 +26,7 @@ impl SliceConstructor {
         let is_last_slice = slice_index == self.num_slices - 1;
         if is_last_slice {
             if bytes.len() > SLICE_SIZE {
-                log::error!(
+                tracing::error!(
                     "Invalid last slice_size for SliceMessage, got {}, expected less than {}.",
                     bytes.len(),
                     SLICE_SIZE,
@@ -34,7 +34,7 @@ impl SliceConstructor {
                 return Err(ChannelError::InvalidSliceMessage);
             }
         } else if bytes.len() != SLICE_SIZE {
-            log::error!("Invalid slice_size for SliceMessage, got {}, expected {}.", bytes.len(), SLICE_SIZE);
+            tracing::error!("Invalid slice_size for SliceMessage, got {}, expected {}.", bytes.len(), SLICE_SIZE);
             return Err(ChannelError::InvalidSliceMessage);
         }
 
@@ -55,7 +55,7 @@ impl SliceConstructor {
             };
 
             self.sliced_data[start..end].copy_from_slice(bytes);
-            log::trace!(
+            tracing::trace!(
                 "Received slice {} from message {}. ({}/{})",
                 slice_index,
                 self.message_id,
@@ -65,7 +65,7 @@ impl SliceConstructor {
         }
 
         if self.num_received_slices == self.num_slices {
-            log::trace!("Received all slices for message {}.", self.message_id);
+            tracing::trace!("Received all slices for message {}.", self.message_id);
             let payload = std::mem::take(&mut self.sliced_data);
             return Ok(Some(payload.into()));
         }

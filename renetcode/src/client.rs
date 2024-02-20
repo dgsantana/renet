@@ -197,11 +197,11 @@ impl NetcodeClient {
         ) {
             Ok((_, packet)) => packet,
             Err(e) => {
-                log::error!("Failed to decode packet: {}", e);
+                tracing::error!("Failed to decode packet: {}", e);
                 return None;
             }
         };
-        log::trace!("Received packet from server: {:?}", packet.packet_type());
+        tracing::trace!("Received packet from server: {:?}", packet.packet_type());
 
         match (packet, &self.state) {
             (Packet::ConnectionDenied, ClientState::SendingConnectionRequest | ClientState::SendingConnectionResponse) => {
@@ -270,7 +270,7 @@ impl NetcodeClient {
     /// Might return the serve address and a protocol packet to be sent to the server.
     pub fn update(&mut self, duration: Duration) -> Option<(&mut [u8], SocketAddr)> {
         if let Err(e) = self.update_internal_state(duration) {
-            log::error!("Failed to update client: {}", e);
+            tracing::error!("Failed to update client: {}", e);
             return None;
         }
 

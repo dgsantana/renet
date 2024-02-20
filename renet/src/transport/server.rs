@@ -111,12 +111,12 @@ impl NetcodeServerTransport {
                 match self.netcode_server.generate_payload_packet(client_id.raw(), &packet) {
                     Ok((addr, payload)) => {
                         if let Err(e) = self.socket.send_to(payload, addr) {
-                            log::error!("Failed to send packet to client {client_id} ({addr}): {e}");
+                            tracing::error!("Failed to send packet to client {client_id} ({addr}): {e}");
                             continue 'clients;
                         }
                     }
                     Err(e) => {
-                        log::error!("Failed to encrypt payload packet for client {client_id}: {e}");
+                        tracing::error!("Failed to encrypt payload packet for client {client_id}: {e}");
                         continue 'clients;
                     }
                 }
@@ -128,7 +128,7 @@ impl NetcodeServerTransport {
 fn handle_server_result(server_result: ServerResult, socket: &UdpSocket, reliable_server: &mut RenetServer) {
     let send_packet = |packet: &[u8], addr: SocketAddr| {
         if let Err(err) = socket.send_to(packet, addr) {
-            log::error!("Failed to send packet to {addr}: {err}");
+            tracing::error!("Failed to send packet to {addr}: {err}");
         }
     };
 
@@ -140,7 +140,7 @@ fn handle_server_result(server_result: ServerResult, socket: &UdpSocket, reliabl
         ServerResult::Payload { client_id, payload } => {
             let client_id = ClientId::from_raw(client_id);
             if let Err(e) = reliable_server.process_packet_from(payload, client_id) {
-                log::error!("Error while processing payload for {}: {}", client_id, e);
+                tracing::error!("Error while processing payload for {}: {}", client_id, e);
             }
         }
         ServerResult::ClientConnected {

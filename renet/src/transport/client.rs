@@ -55,10 +55,10 @@ impl NetcodeClientTransport {
         match self.netcode_client.disconnect() {
             Ok((addr, packet)) => {
                 if let Err(e) = self.socket.send_to(packet, addr) {
-                    log::error!("Failed to send disconnect packet: {e}");
+                    tracing::error!("Failed to send disconnect packet: {e}");
                 }
             }
-            Err(e) => log::error!("Failed to generate disconnect packet: {e}"),
+            Err(e) => tracing::error!("Failed to generate disconnect packet: {e}"),
         }
     }
 
@@ -108,7 +108,7 @@ impl NetcodeClientTransport {
             let packet = match self.socket.recv_from(&mut self.buffer) {
                 Ok((len, addr)) => {
                     if addr != self.netcode_client.server_addr() {
-                        log::debug!("Discarded packet from unknown server {:?}", addr);
+                        tracing::debug!("Discarded packet from unknown server {:?}", addr);
                         continue;
                     }
 

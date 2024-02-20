@@ -193,7 +193,7 @@ impl RenetServer {
     pub fn send_message<I: Into<u8>, B: Into<Bytes>>(&mut self, client_id: ClientId, channel_id: I, message: B) {
         match self.connections.get_mut(&client_id) {
             Some(connection) => connection.send_message(channel_id, message),
-            None => log::error!("Tried to send a message to invalid client {:?}", client_id),
+            None => tracing::error!("Tried to send a message to invalid client {:?}", client_id),
         }
     }
 

@@ -271,7 +271,7 @@ impl NetcodeServer {
         let addr_already_connected = find_client_mut_by_addr(&mut self.clients, addr).is_some();
         let id_already_connected = find_client_mut_by_id(&mut self.clients, connect_token.client_id).is_some();
         if id_already_connected || addr_already_connected {
-            log::debug!(
+            tracing::debug!(
                 "Connection request denied: client {} already connected (address: {}).",
                 connect_token.client_id,
                 addr
@@ -280,7 +280,7 @@ impl NetcodeServer {
         }
 
         if !self.pending_clients.contains_key(&addr) && self.pending_clients.len() >= NETCODE_MAX_PENDING_CLIENTS {
-            log::warn!(
+            tracing::warn!(
                 "Connection request denied: reached max amount allowed of pending clients ({}).",
                 NETCODE_MAX_PENDING_CLIENTS
             );
@@ -296,7 +296,7 @@ impl NetcodeServer {
         };
 
         if !self.find_or_add_connect_token_entry(connect_token_entry) {
-            log::warn!("Connection request denied: unable to add connect token entry");
+            tracing::warn!("Connection request denied: unable to add connect token entry");
             return Ok(ServerResult::None);
         }
 
@@ -330,7 +330,7 @@ impl NetcodeServer {
         )?;
         self.global_sequence += 1;
 
-        log::trace!("Connection request from Client {}", connect_token.client_id);
+        tracing::trace!("Connection request from Client {}", connect_token.client_id);
 
         let pending = self.pending_clients.entry(addr).or_insert_with(|| Connection {
             confirmed: false,
@@ -379,7 +379,7 @@ impl NetcodeServer {
     pub fn process_packet<'a, 's>(&'s mut self, addr: SocketAddr, buffer: &'a mut [u8]) -> ServerResult<'a, 's> {
         match self.process_packet_internal(addr, buffer) {
             Err(e) => {
-                log::error!("Failed to process packet: {}", e);
+                tracing::error!("Failed to process packet: {}", e);
                 ServerResult::None
             }
             Ok(r) => r,
@@ -399,7 +399,7 @@ impl NetcodeServer {
                 Some(&client.receive_key),
                 Some(&mut client.replay_protection),
             )?;
-            log::trace!(
+            tracing::trace!(
                 "Received packet from connected client ({}): {:?}",
                 client.client_id,
                 packet.packet_type()
@@ -412,7 +412,7 @@ impl NetcodeServer {
                         client.state = ConnectionState::Disconnected;
                         let client_id = client.client_id;
                         self.clients[slot] = None;
-                        log::trace!("Client {} requested to disconnect", client_id);
+                        tracing::trace!("Client {} requested to disconnect", client_id);
                         return Ok(ServerResult::ClientDisconnected {
                             client_id,
                             addr,
@@ -421,7 +421,7 @@ impl NetcodeServer {
                     }
                     Packet::Payload(payload) => {
                         if !client.confirmed {
-                            log::trace!("Confirmed connection for Client {}", client.client_id);
+                            tracing::trace!("Confirmed connection for Client {}", client.client_id);
                             client.confirmed = true;
                         }
                         return Ok(ServerResult::Payload {
@@ -431,7 +431,7 @@ impl NetcodeServer {
                     }
                     Packet::KeepAlive { .. } => {
                         if !client.confirmed {
-                            log::trace!("Confirmed connection for Client {}", client.client_id);
+                            tracing::trace!("Confirmed connection for Client {}", client.client_id);
                             client.confirmed = true;
                         }
                         return Ok(ServerResult::None);
@@ -451,7 +451,7 @@ impl NetcodeServer {
                 Some(&mut pending.replay_protection),
             )?;
             pending.last_packet_received_time = self.current_time;
-            log::trace!("Received packet from pending client ({}): {:?}", addr, packet.packet_type());
+            tracing::trace!("Received packet from pending client ({}): {:?}", addr, packet.packet_type());
             match packet {
                 Packet::ConnectionRequest {
                     protocol_id,
@@ -469,7 +469,7 @@ impl NetcodeServer {
                     let challenge_token = ChallengeToken::decode(token_data, token_sequence, &self.challenge_key)?;
                     let mut pending = self.pending_clients.remove(&addr).unwrap();
                     if find_client_slot_by_id(&self.clients, challenge_token.client_id).is_some() {
-                        log::debug!(
+                        tracing::debug!(
                             "Ignored connection response for Client {}, already connected.",
                             challenge_token.client_id
                         );
@@ -572,7 +572,7 @@ impl NetcodeServer {
 
         for client in self.pending_clients.values_mut() {
             if self.current_time.as_secs() > client.expire_timestamp {
-                log::debug!("Pending Client {} disconnected, connection token expired.", client.client_id);
+                tracing::debug!("Pending Client {} disconnected, connection token expired.", client.client_id);
                 client.state = ConnectionState::Disconnected;
             }
         }
@@ -604,7 +604,7 @@ impl NetcodeServer {
             let connection_timed_out = client.timeout_seconds > 0
                 && (client.last_packet_received_time + Duration::from_secs(client.timeout_seconds as u64) < self.current_time);
             if connection_timed_out {
-                log::debug!("Client {} disconnected, connection timed out", client.client_id);
+                tracing::debug!("Client {} disconnected, connection timed out", client.client_id);
                 client.state = ConnectionState::Disconnected;
             }
 
@@ -617,7 +617,7 @@ impl NetcodeServer {
 
                 let len = match packet.encode(&mut self.out, self.protocol_id, Some((sequence, &send_key))) {
                     Err(e) => {
-                        log::error!("Failed to encode disconnect packet: {}", e);
+                        tracing::error!("Failed to encode disconnect packet: {}", e);
                         return ServerResult::ClientDisconnected {
                             client_id,
                             addr,
@@ -642,7 +642,7 @@ impl NetcodeServer {
 
                 let len = match packet.encode(&mut self.out, self.protocol_id, Some((client.sequence, &client.send_key))) {
                     Err(e) => {
-                        log::error!("Failed to encode keep alive packet: {}", e);
+                        tracing::error!("Failed to encode keep alive packet: {}", e);
                         return ServerResult::None;
                     }
                     Ok(len) => len,
@@ -674,7 +674,7 @@ impl NetcodeServer {
 
             let len = match packet.encode(&mut self.out, self.protocol_id, Some((client.sequence, &client.send_key))) {
                 Err(e) => {
-                    log::error!("Failed to encode disconnect packet: {}", e);
+                    tracing::error!("Failed to encode disconnect packet: {}", e);
                     return ServerResult::ClientDisconnected {
                         client_id,
                         addr: client.addr,
