@@ -129,10 +129,14 @@ impl SteamClientTransport {
             unreachable!()
         };
 
-        let messages = connection.receive_messages(MAX_MESSAGE_BATCH_SIZE);
-        messages.iter().for_each(|message| {
-            client.process_packet(message.data());
+        let messages = connection.receive_messages(MAX_MESSAGE_BATCH_SIZE).inspect_err(|e| {
+            log::error!("Error receiving messages: {:?}", e);
         });
+        if let Ok(messages) = messages {
+            messages.iter().for_each(|message| {
+                client.process_packet(message.data());
+            });
+        }
     }
 
     pub fn send_packets(&mut self, client: &mut RenetClient) -> Result<(), SteamError> {
